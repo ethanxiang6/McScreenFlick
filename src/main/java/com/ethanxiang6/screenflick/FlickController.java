@@ -3,6 +3,7 @@ package com.ethanxiang6.screenflick;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
@@ -27,6 +28,7 @@ public final class FlickController {
 	private static Phase phase = Phase.IDLE;
 	private static LivingEntity target;
 	private static int tapTicksLeft;
+	private static float originYaw;
 
 	private static boolean suppressForward;
 	private static boolean forceBack;
@@ -78,17 +80,14 @@ public final class FlickController {
 	}
 
 	private static void startFlick(Minecraft mc, LocalPlayer player) {
-		LivingEntity found = findTarget(mc, player);
-		if (found == null) {
-			return;
-		}
-
 		FlickConfig cfg = FlickConfig.get();
-		float centerYaw = yawTo(player, found);
+		LivingEntity found = findTarget(mc, player);
 		float currentYaw = player.getYRot();
+		originYaw = currentYaw;
 
 		// Strafe key picks the side: A flicks (and knocks them) left, D flicks right.
-		// With neither held, keep going the way the crosshair is already crossing them.
+		// With neither held, keep going the way the crosshair is already crossing them
+		// (or flick right when there is nothing to hit).
 		boolean left = mc.options.keyLeft.isDown();
 		boolean right = mc.options.keyRight.isDown();
 		int dir;
@@ -96,32 +95,44 @@ public final class FlickController {
 			dir = -1;
 		} else if (right && !left) {
 			dir = 1;
+		} else if (found != null) {
+			dir = Mth.wrapDegrees(yawTo(player, found) - currentYaw) >= 0.0f ? 1 : -1;
 		} else {
-			dir = Mth.wrapDegrees(centerYaw - currentYaw) >= 0.0f ? 1 : -1;
+			dir = 1;
 		}
 
+		float centerYaw = found != null ? yawTo(player, found) : currentYaw;
 		float flickYaw = centerYaw + dir * cfg.flickAngle;
 		player.setYRot(currentYaw + Mth.wrapDegrees(flickYaw - currentYaw));
 
 		target = found;
 		phase = Phase.FLICKED;
+
+		if (found == null) {
+			status(mc, "Screen Flick: no target in reach (whiffed)");
+		}
 	}
 
 	private static void strike(Minecraft mc, LocalPlayer player) {
 		LivingEntity t = target;
+		boolean canHit = t != null && t.isAlive() && !t.isRemoved()
+				&& reachDistance(player, t) <= player.entityInteractionRange();
 
-		if (t == null || !t.isAlive() || t.isRemoved() || reachDistance(player, t) > player.entityInteractionRange()) {
+		if (canHit) {
+			mc.gameMode.attack(player, t);
+			player.swing(InteractionHand.MAIN_HAND);
+			snapToCenter(player, t);
+			status(mc, "Screen Flick: hit " + t.getName().getString() + (FlickConfig.get().isSTap() ? " + S-tap" : " + W-tap"));
+		} else {
+			// Nothing to hit: still swing and snap back so the combo is visible.
+			player.swing(InteractionHand.MAIN_HAND);
 			if (t != null) {
 				snapToCenter(player, t);
+			} else {
+				float current = player.getYRot();
+				player.setYRot(current + Mth.wrapDegrees(originYaw - current));
 			}
-			reset();
-			return;
 		}
-
-		mc.gameMode.attack(player, t);
-		player.swing(InteractionHand.MAIN_HAND);
-
-		snapToCenter(player, t);
 
 		FlickConfig cfg = FlickConfig.get();
 		suppressForward = true;
@@ -131,6 +142,12 @@ public final class FlickController {
 
 		if (tapTicksLeft <= 0) {
 			endTap(mc, player);
+		}
+	}
+
+	private static void status(Minecraft mc, String text) {
+		if (FlickConfig.get().showStatus) {
+			mc.gui.hud.setOverlayMessage(Component.literal(text), false);
 		}
 	}
 

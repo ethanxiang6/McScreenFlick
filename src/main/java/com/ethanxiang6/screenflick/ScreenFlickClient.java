@@ -18,6 +18,7 @@ public final class ScreenFlickClient implements ClientModInitializer {
 	@Override
 	public void onInitializeClient() {
 		FlickConfig.load();
+		System.out.println("[screenflick] Loaded. Flick key defaults to R (Controls > Screen Flick).");
 
 		KeyMapping.Category category = KeyMapping.Category.register(Identifier.fromNamespaceAndPath(MOD_ID, "main"));
 		flickKey = KeyMappingHelper.registerKeyMapping(

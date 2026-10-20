@@ -32,6 +32,9 @@ public final class FlickConfig {
 	/** Only targets within this many degrees of your crosshair (left or right) are picked. */
 	public float targetCone = 70.0f;
 
+	/** Show what each press did in the action bar. */
+	public boolean showStatus = true;
+
 	private static FlickConfig instance = new FlickConfig();
 
 	public static FlickConfig get() {
