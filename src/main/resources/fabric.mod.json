@@ -1,0 +1,20 @@
+{
+	"schemaVersion": 1,
+	"id": "screenflick",
+	"version": "${version}",
+	"name": "Screen Flick",
+	"description": "One keybind: a 45 degree screen flick hit combined with a W-tap or S-tap to steer your opponent's knockback.",
+	"authors": ["ethanxiang6"],
+	"license": "MIT",
+	"environment": "client",
+	"entrypoints": {
+		"client": ["com.ethanxiang6.screenflick.ScreenFlickClient"]
+	},
+	"mixins": ["screenflick.mixins.json"],
+	"depends": {
+		"fabricloader": ">=0.19.3",
+		"minecraft": "~26.2",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}
