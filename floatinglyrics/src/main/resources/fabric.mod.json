@@ -1,0 +1,19 @@
+{
+	"schemaVersion": 1,
+	"id": "floatinglyrics",
+	"version": "${version}",
+	"name": "Floating Lyrics",
+	"description": "Synced lyrics for whatever song is playing on your computer, floating on your Minecraft screen.",
+	"authors": ["ethanxiang6"],
+	"license": "MIT",
+	"environment": "client",
+	"entrypoints": {
+		"client": ["dev.ethanxiang6.floatinglyrics.FloatingLyricsClient"]
+	},
+	"depends": {
+		"fabricloader": ">=0.19.3",
+		"minecraft": "~${minecraft_version}",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}

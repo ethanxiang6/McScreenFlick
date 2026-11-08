@@ -1,0 +1,55 @@
+plugins {
+	id 'net.fabricmc.fabric-loom' version "${loom_version}"
+}
+
+version = "${project.mod_version}+${project.minecraft_version}"
+group = project.maven_group
+
+base {
+	archivesName = project.archives_base_name
+}
+
+repositories {
+	// Fabric API and Loader come from maven.fabricmc.net via Loom's defaults.
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+
+	// 26.x ships unobfuscated, so mods go on the plain configurations.
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+}
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(25)
+	}
+	withSourcesJar()
+}
+
+tasks.withType(JavaCompile).configureEach {
+	options.release = 25
+	options.encoding = 'UTF-8'
+}
+
+processResources {
+	inputs.property 'version', project.version
+	inputs.property 'minecraft_version', project.minecraft_version
+	inputs.property 'loader_version', project.loader_version
+
+	filesMatching('fabric.mod.json') {
+		expand(
+			'version': project.version,
+			'minecraft_version': project.minecraft_version,
+			'loader_version': project.loader_version
+		)
+	}
+}
+
+jar {
+	inputs.property 'archivesName', project.base.archivesName
+	from('LICENSE') {
+		rename { "${it}_${project.base.archivesName.get()}" }
+	}
+}
