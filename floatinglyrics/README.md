@@ -34,6 +34,8 @@ Build it (see below) or grab the jar from the GitHub Actions artifact, then drop
 
 Browsers (Firefox, Chrome, Chromium, Brave, Edge and similar) are skipped by default, so a YouTube or Twitch tab will not take over from Spotify. The list is `ignoredPlayers` in the config file. Naming a player with `/lyrics player` overrides it.
 
+When no lyrics can be shown, a small status line says why (no player found, looking up, not found, lookup failed). Set `showStatus` to false in the config to hide it.
+
 Settings are saved to `config/floatinglyrics.json`, which you can also edit by hand.
 
 ## Build

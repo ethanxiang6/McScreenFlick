@@ -27,6 +27,8 @@ public final class LyricsConfig {
 	public float bobPixels = 2.0f;
 	public boolean showPrevious = true;
 	public boolean showNext = true;
+	/** Shows a short message when no lyrics can be shown (no player, still loading, not found, failed). */
+	public boolean showStatus = true;
 	/** Shifts lyrics timing. Positive shows lines earlier, negative later. */
 	public long offsetMs = 0;
 	/** Optional MPRIS player name for Linux (for example "spotify"). Empty means any player. */

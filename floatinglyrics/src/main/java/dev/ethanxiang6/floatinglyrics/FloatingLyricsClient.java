@@ -19,6 +19,8 @@ public final class FloatingLyricsClient implements ClientModInitializer {
 	public static final String MOD_ID = "floatinglyrics";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
+	private static final long START_NANOS = System.nanoTime();
+
 	private static LyricsConfig config;
 	private static LyricsService lyrics;
 	private static MediaPoller media;
@@ -42,6 +44,11 @@ public final class FloatingLyricsClient implements ClientModInitializer {
 
 		ClientCommandRegistrationCallback.EVENT.register(
 				(dispatcher, buildContext) -> LyricsCommands.register(dispatcher));
+	}
+
+	/** Seconds since the mod was loaded. */
+	public static double uptimeSeconds() {
+		return (System.nanoTime() - START_NANOS) / 1_000_000_000.0;
 	}
 
 	public static LyricsConfig config() {

@@ -46,6 +46,7 @@ public final class LyricsHud {
 		LyricsTrack track = FloatingLyricsClient.lyrics().track();
 		if (song == null || track == null || track.isEmpty()) {
 			lastTrack = null;
+			renderStatus(g, cfg, song);
 			return;
 		}
 
@@ -126,6 +127,42 @@ public final class LyricsHud {
 		draw(g, font, prevRows, cx, prevTop, prevScale, cfg.dimColor, prevAlpha, t, -1, cfg.bobPixels);
 		draw(g, font, curRows, cx, curTopS, curScale, cfg.currentColor, curAlpha, t, 0, cfg.bobPixels);
 		draw(g, font, nextRows, cx, nextTop, dim, cfg.dimColor, nextAlpha, t, 1, cfg.bobPixels);
+	}
+
+	/** One small line explaining why there are no lyrics, so a silent overlay is never a mystery. */
+	private static void renderStatus(GuiGraphicsExtractor g, LyricsConfig cfg, Snapshot song) {
+		if (!cfg.showStatus) {
+			return;
+		}
+		String msg = null;
+		if (song == null) {
+			// Only nag right after startup; later, silence just means nothing is playing.
+			if (FloatingLyricsClient.uptimeSeconds() < 25) {
+				msg = "Floating Lyrics: no player detected (is playerctl installed? Is Spotify playing?)";
+			}
+		} else {
+			switch (FloatingLyricsClient.lyrics().status()) {
+				case LOADING -> msg = "Looking up lyrics: " + song.title();
+				case NOT_FOUND -> msg = "No synced lyrics found: " + song.artist() + " - " + song.title();
+				case ERROR -> msg = "Lyrics lookup failed (check your connection)";
+				default -> {
+				}
+			}
+		}
+		if (msg == null) {
+			return;
+		}
+		Minecraft mc = Minecraft.getInstance();
+		Font font = mc.font;
+		int guiW = mc.getWindow().getGuiScaledWidth();
+		int guiH = mc.getWindow().getGuiScaledHeight();
+		int maxW = (int) (guiW * 0.9);
+		while (msg.length() > 4 && font.width(msg) > maxW) {
+			msg = msg.substring(0, msg.length() - 4) + "...";
+		}
+		int argb = (0xCC << 24) | (cfg.dimColor & 0xFFFFFF);
+		int x = (int) (guiW * cfg.anchorX) - font.width(msg) / 2;
+		g.text(font, msg, x, (int) (guiH * cfg.anchorY), argb, true);
 	}
 
 	private static void draw(GuiGraphicsExtractor g, Font font, List<String> rows, double cx, double top,
