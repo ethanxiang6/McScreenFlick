@@ -2,6 +2,7 @@ package dev.ethanxiang6.floatinglyrics.media;
 
 import dev.ethanxiang6.floatinglyrics.FloatingLyricsClient;
 
+import java.util.Collection;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -14,8 +15,9 @@ public final class MediaPoller {
 	private final Consumer<Optional<Snapshot>> listener;
 	private volatile Snapshot latest;
 
-	public MediaPoller(Supplier<String> preferredPlayer, Consumer<Optional<Snapshot>> listener) {
-		this.provider = createProvider(preferredPlayer);
+	public MediaPoller(Supplier<String> preferredPlayer, Supplier<? extends Collection<String>> ignoredPlayers,
+					   Consumer<Optional<Snapshot>> listener) {
+		this.provider = createProvider(preferredPlayer, ignoredPlayers);
 		this.listener = listener;
 	}
 
@@ -42,13 +44,14 @@ public final class MediaPoller {
 		return latest;
 	}
 
-	private static MediaProvider createProvider(Supplier<String> preferredPlayer) {
+	private static MediaProvider createProvider(Supplier<String> preferredPlayer,
+												Supplier<? extends Collection<String>> ignoredPlayers) {
 		String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
 		if (os.contains("linux")) {
-			return new PlayerctlProvider(preferredPlayer);
+			return new PlayerctlProvider(preferredPlayer, ignoredPlayers);
 		}
 		if (os.contains("win")) {
-			return new WindowsMediaProvider();
+			return new WindowsMediaProvider(ignoredPlayers);
 		}
 		return null;
 	}

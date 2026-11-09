@@ -7,8 +7,11 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.Collection;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 /**
  * Windows: asks the system media transport controls (the same source as the volume flyout) through a
@@ -27,10 +30,20 @@ public final class WindowsMediaProvider implements MediaProvider {
 			  $null = $t.Wait(5000)
 			  $t.Result
 			}
+			$ignore = @(__IGNORE__)
 			$mgr = Await ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager]::RequestAsync()) ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager])
 			while ($true) {
 			  $line = 'NONE'
-			  $s = $mgr.GetCurrentSession()
+			  $s = $null
+			  foreach ($c in $mgr.GetSessions()) {
+			    $id = "$($c.SourceAppUserModelId)".ToLower()
+			    $skip = $false
+			    foreach ($i in $ignore) { if ($id.Contains($i)) { $skip = $true } }
+			    if ($skip) { continue }
+			    $cs = $c.GetPlaybackInfo().PlaybackStatus.ToString()
+			    if ($cs -eq 'Playing') { $s = $c; break }
+			    if (-not $s -and $cs -eq 'Paused') { $s = $c }
+			  }
 			  if ($s) {
 			    $props = Await ($s.TryGetMediaPropertiesAsync()) ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionMediaProperties])
 			    $tl = $s.GetTimelineProperties()
@@ -47,9 +60,35 @@ public final class WindowsMediaProvider implements MediaProvider {
 			}
 			""";
 
+	private final Supplier<? extends Collection<String>> ignoredPlayers;
 	private volatile boolean running;
 	private volatile Process process;
 	private Thread thread;
+
+	public WindowsMediaProvider(Supplier<? extends Collection<String>> ignoredPlayers) {
+		this.ignoredPlayers = ignoredPlayers;
+	}
+
+	/** Builds the PowerShell array body, for example {@code 'chrome','firefox'}. Only safe characters survive. */
+	static String ignoreList(Collection<String> ignored) {
+		StringBuilder sb = new StringBuilder();
+		if (ignored != null) {
+			for (String item : ignored) {
+				if (item == null) {
+					continue;
+				}
+				String clean = item.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9._-]", "");
+				if (clean.isEmpty()) {
+					continue;
+				}
+				if (!sb.isEmpty()) {
+					sb.append(',');
+				}
+				sb.append('\'').append(clean).append('\'');
+			}
+		}
+		return sb.toString();
+	}
 
 	@Override
 	public void start(Consumer<Optional<Snapshot>> sink) {
@@ -77,7 +116,8 @@ public final class WindowsMediaProvider implements MediaProvider {
 	}
 
 	private void loop(Consumer<Optional<Snapshot>> sink) {
-		String encoded = Base64.getEncoder().encodeToString(SCRIPT.getBytes(StandardCharsets.UTF_16LE));
+		String script = SCRIPT.replace("__IGNORE__", ignoreList(ignoredPlayers.get()));
+		String encoded = Base64.getEncoder().encodeToString(script.getBytes(StandardCharsets.UTF_16LE));
 		while (running) {
 			try {
 				process = new ProcessBuilder(

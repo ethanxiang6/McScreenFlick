@@ -7,6 +7,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 /** User settings, stored as JSON in the Fabric config folder and edited with /floatinglyrics commands. */
 public final class LyricsConfig {
@@ -29,6 +31,14 @@ public final class LyricsConfig {
 	public long offsetMs = 0;
 	/** Optional MPRIS player name for Linux (for example "spotify"). Empty means any player. */
 	public String preferredPlayer = "";
+	/**
+	 * Players that never provide lyrics, so a YouTube or Twitch tab cannot take over from Spotify.
+	 * Matched against the player name on Linux and the app id on Windows. Ignored when
+	 * {@link #preferredPlayer} is set.
+	 */
+	public List<String> ignoredPlayers = new ArrayList<>(List.of(
+			"firefox", "chromium", "chrome", "google-chrome", "brave", "vivaldi", "opera",
+			"edge", "microsoft-edge", "librewolf", "zen"));
 	/** RGB colour of the current line. */
 	public int currentColor = 0xFFFFFF;
 	/** RGB colour of the surrounding lines. */
@@ -73,6 +83,9 @@ public final class LyricsConfig {
 		bobPixels = Math.max(0f, Math.min(10f, bobPixels));
 		if (preferredPlayer == null) {
 			preferredPlayer = "";
+		}
+		if (ignoredPlayers == null) {
+			ignoredPlayers = new ArrayList<>();
 		}
 	}
 }

@@ -30,7 +30,9 @@ Build it (see below) or grab the jar from the GitHub Actions artifact, then drop
     /lyrics scale <0.5-4>       size of the current line
     /lyrics pos <x> <y>         position as fractions of the screen, 0 to 1
     /lyrics bob <pixels>        strength of the floating motion, 0 turns it off
-    /lyrics player <name>       Linux only, pick one MPRIS player such as spotify
+    /lyrics player <name>       Linux only, pick one MPRIS player such as spotify, or auto to go back to automatic
+
+Browsers (Firefox, Chrome, Chromium, Brave, Edge and similar) are skipped by default, so a YouTube or Twitch tab will not take over from Spotify. The list is `ignoredPlayers` in the config file. Naming a player with `/lyrics player` overrides it.
 
 Settings are saved to `config/floatinglyrics.json`, which you can also edit by hand.
 

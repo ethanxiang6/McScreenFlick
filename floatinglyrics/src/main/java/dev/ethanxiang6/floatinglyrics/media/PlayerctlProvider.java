@@ -7,7 +7,9 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -16,21 +18,24 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
- * Linux: reads any MPRIS player (Spotify, Firefox, mpv, VLC, ...) through the {@code playerctl} command.
- * Install it with your package manager, for example {@code sudo dnf install playerctl}.
+ * Linux: reads any MPRIS player (Spotify, mpv, VLC, ...) through the {@code playerctl} command.
+ * Browsers are skipped by default so a YouTube or Twitch tab does not steal the lyrics.
+ * Install playerctl with your package manager, for example {@code sudo dnf install playerctl}.
  */
 public final class PlayerctlProvider implements MediaProvider {
 
-	// playerctl reports position and length in microseconds in format strings.
+	// playerName first so we can filter, then position and length in microseconds.
 	private static final String FORMAT =
-			"{{status}}\t{{position}}\t{{mpris:length}}\t{{artist}}\t{{title}}\t{{album}}";
+			"{{playerName}}\t{{status}}\t{{position}}\t{{mpris:length}}\t{{artist}}\t{{title}}\t{{album}}";
 
 	private final Supplier<String> preferredPlayer;
+	private final Supplier<? extends Collection<String>> ignoredPlayers;
 	private ScheduledExecutorService executor;
 	private boolean warnedMissing;
 
-	public PlayerctlProvider(Supplier<String> preferredPlayer) {
+	public PlayerctlProvider(Supplier<String> preferredPlayer, Supplier<? extends Collection<String>> ignoredPlayers) {
 		this.preferredPlayer = preferredPlayer;
+		this.ignoredPlayers = ignoredPlayers;
 	}
 
 	@Override
@@ -65,7 +70,8 @@ public final class PlayerctlProvider implements MediaProvider {
 		List<String> cmd = new ArrayList<>();
 		cmd.add("playerctl");
 		String preferred = preferredPlayer.get();
-		if (preferred != null && !preferred.isBlank()) {
+		boolean explicit = preferred != null && !preferred.isBlank();
+		if (explicit) {
 			cmd.add("--player=" + preferred.trim());
 		} else {
 			cmd.add("--all-players");
@@ -104,14 +110,26 @@ public final class PlayerctlProvider implements MediaProvider {
 				process.destroyForcibly();
 			}
 		}
-		return pick(lines, System.nanoTime());
+		// A player the user named explicitly is never filtered out.
+		Collection<String> ignored = explicit ? List.of() : ignoredPlayers.get();
+		return pick(lines, System.nanoTime(), ignored);
 	}
 
-	/** Chooses the first playing player, otherwise the first paused one. Package-private for tests. */
-	static Optional<Snapshot> pick(List<String> lines, long nowNanos) {
+	/**
+	 * Chooses the first playing player, otherwise the first paused one, skipping ignored players.
+	 * Each line starts with the player name. Package-private for tests.
+	 */
+	static Optional<Snapshot> pick(List<String> lines, long nowNanos, Collection<String> ignored) {
 		Snapshot paused = null;
 		for (String line : lines) {
-			Snapshot s = Snapshot.parseTabLine(line, 0.001, nowNanos);
+			int tab = line.indexOf('\t');
+			if (tab < 0) {
+				continue;
+			}
+			if (isIgnored(line.substring(0, tab), ignored)) {
+				continue;
+			}
+			Snapshot s = Snapshot.parseTabLine(line.substring(tab + 1), 0.001, nowNanos);
 			if (s == null) {
 				continue;
 			}
@@ -123,5 +141,23 @@ public final class PlayerctlProvider implements MediaProvider {
 			}
 		}
 		return Optional.ofNullable(paused);
+	}
+
+	/** Matches the base player name, so "firefox.instance_1_123" is caught by "firefox". */
+	static boolean isIgnored(String playerName, Collection<String> ignored) {
+		if (ignored == null || ignored.isEmpty()) {
+			return false;
+		}
+		String base = playerName.toLowerCase(Locale.ROOT).trim();
+		int dot = base.indexOf('.');
+		if (dot > 0) {
+			base = base.substring(0, dot);
+		}
+		for (String item : ignored) {
+			if (item != null && base.equals(item.toLowerCase(Locale.ROOT).trim())) {
+				return true;
+			}
+		}
+		return false;
 	}
 }

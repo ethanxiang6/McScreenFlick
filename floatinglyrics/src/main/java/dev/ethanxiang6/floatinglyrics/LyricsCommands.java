@@ -75,9 +75,13 @@ final class LyricsCommands {
 						.then(ClientCommands.argument("name", StringArgumentType.word())
 								.executes(c -> {
 									LyricsConfig cfg = FloatingLyricsClient.config();
-									cfg.preferredPlayer = StringArgumentType.getString(c, "name");
+									String name = StringArgumentType.getString(c, "name");
+									boolean auto = name.equalsIgnoreCase("auto") || name.equalsIgnoreCase("any");
+									cfg.preferredPlayer = auto ? "" : name;
 									cfg.save();
-									return say(c, "Preferred player: " + cfg.preferredPlayer);
+									return say(c, auto
+											? "Player: automatic (browsers are skipped)"
+											: "Preferred player: " + cfg.preferredPlayer);
 								})));
 	}
 

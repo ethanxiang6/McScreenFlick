@@ -27,7 +27,7 @@ public final class FloatingLyricsClient implements ClientModInitializer {
 	public void onInitializeClient() {
 		config = LyricsConfig.load(FabricLoader.getInstance().getConfigDir().resolve("floatinglyrics.json"));
 		lyrics = new LyricsService();
-		media = new MediaPoller(() -> config.preferredPlayer, lyrics::onSnapshot);
+		media = new MediaPoller(() -> config.preferredPlayer, () -> config.ignoredPlayers, lyrics::onSnapshot);
 		media.start();
 
 		ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
